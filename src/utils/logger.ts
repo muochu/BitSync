@@ -1,7 +1,3 @@
-/**
- * Simple logger utility
- * Lightweight logging without external dependencies
- */
 const logger = {
   info: (...args: unknown[]): void => {
     console.log(`[INFO] ${new Date().toISOString()}`, ...args);

@@ -6,10 +6,7 @@ interface ErrorWithStatus extends Error {
   status?: number;
 }
 
-/**
- * Centralized error handling middleware
- * Keeps error handling consistent across the application
- */
+// Centralized error handling middleware
 export function errorHandler(
   err: ErrorWithStatus,
   _req: Request,
@@ -32,9 +29,7 @@ export function errorHandler(
   });
 }
 
-/**
- * Async error wrapper - catches errors in async route handlers
- */
+// Async error wrapper for route handlers
 export function asyncHandler(
   fn: (req: Request, res: Response, next: NextFunction) => Promise<void> | void
 ) {
