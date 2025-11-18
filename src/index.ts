@@ -1,7 +1,7 @@
-require('dotenv').config();
-const express = require('express');
-const { errorHandler } = require('./middleware/errorHandler');
-const logger = require('./utils/logger');
+import 'dotenv/config';
+import express, { Request, Response } from 'express';
+import { errorHandler } from './middleware/errorHandler';
+import logger from './utils/logger';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,12 +11,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check route
-app.get('/health', (req, res) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'BitSync API is running' });
 });
 
 // API routes will be added here
-app.get('/api', (req, res) => {
+app.get('/api', (_req: Request, res: Response) => {
   res.json({
     message: 'BitSync API',
     version: '1.0.0',
@@ -35,7 +35,7 @@ const server = app.listen(PORT, () => {
   logger.info(`BitSync server running on port ${PORT}`);
 });
 
-server.on('error', (err) => {
+server.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EADDRINUSE') {
     logger.error(`Port ${PORT} is already in use`);
   } else {
@@ -53,5 +53,5 @@ process.on('SIGTERM', () => {
   });
 });
 
-module.exports = app;
+export default app;
 

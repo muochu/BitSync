@@ -1,10 +1,21 @@
-const logger = require('../utils/logger');
+import { Request, Response, NextFunction } from 'express';
+import logger from '../utils/logger';
+
+interface ErrorWithStatus extends Error {
+  statusCode?: number;
+  status?: number;
+}
 
 /**
  * Centralized error handling middleware
  * Keeps error handling consistent across the application
  */
-function errorHandler(err, req, res, _next) {
+export function errorHandler(
+  err: ErrorWithStatus,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
   logger.error('Error:', err.message, err.stack);
 
   // Don't leak error details in production
@@ -24,14 +35,11 @@ function errorHandler(err, req, res, _next) {
 /**
  * Async error wrapper - catches errors in async route handlers
  */
-function asyncHandler(fn) {
-  return (req, res, next) => {
+export function asyncHandler(
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void> | void
+) {
+  return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 }
-
-module.exports = {
-  errorHandler,
-  asyncHandler,
-};
 

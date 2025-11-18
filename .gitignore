@@ -37,6 +37,7 @@ coverage/
 # Build outputs
 dist/
 build/
+*.js.map
 
 # Database
 *.db

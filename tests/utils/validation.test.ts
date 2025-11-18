@@ -1,4 +1,4 @@
-const { isValidBitcoinAddress } = require('../../src/utils/validation');
+import { isValidBitcoinAddress } from '../../src/utils/validation';
 
 describe('Bitcoin Address Validation', () => {
   test('validates legacy P2PKH address (starts with 1)', () => {

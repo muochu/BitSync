@@ -1,30 +1,36 @@
+import { Address, Transaction, Balance } from '../types';
+
 /**
  * Simple in-memory data store
  * For MVP - can be replaced with database later if needed
  * Keeps solution lightweight and avoids over-engineering
  */
 class DataStore {
+  private addresses: Map<string, Address>;
+  private transactions: Map<string, Transaction>;
+  private balances: Map<string, Balance>;
+
   constructor() {
-    this.addresses = new Map(); // addressId -> { id, address, createdAt, lastSyncedAt }
-    this.transactions = new Map(); // transactionId -> { id, addressId, txHash, ... }
-    this.balances = new Map(); // addressId -> { addressId, confirmedBalance, unconfirmedBalance, lastUpdated }
+    this.addresses = new Map();
+    this.transactions = new Map();
+    this.balances = new Map();
   }
 
   // Address operations
-  addAddress(addressData) {
+  addAddress(addressData: Address): Address {
     this.addresses.set(addressData.id, addressData);
     return addressData;
   }
 
-  getAddress(id) {
+  getAddress(id: string): Address | undefined {
     return this.addresses.get(id);
   }
 
-  getAllAddresses() {
+  getAllAddresses(): Address[] {
     return Array.from(this.addresses.values());
   }
 
-  deleteAddress(id) {
+  deleteAddress(id: string): boolean {
     // Also clean up related transactions and balances
     this.transactions.forEach((tx, txId) => {
       if (tx.addressId === id) {
@@ -36,24 +42,24 @@ class DataStore {
   }
 
   // Transaction operations
-  addTransaction(transactionData) {
+  addTransaction(transactionData: Transaction): Transaction {
     this.transactions.set(transactionData.id, transactionData);
     return transactionData;
   }
 
-  getTransactionsByAddress(addressId) {
+  getTransactionsByAddress(addressId: string): Transaction[] {
     return Array.from(this.transactions.values()).filter(
       (tx) => tx.addressId === addressId
     );
   }
 
   // Balance operations
-  updateBalance(balanceData) {
+  updateBalance(balanceData: Balance): Balance {
     this.balances.set(balanceData.addressId, balanceData);
     return balanceData;
   }
 
-  getBalance(addressId) {
+  getBalance(addressId: string): Balance | undefined {
     return this.balances.get(addressId);
   }
 }
@@ -61,5 +67,5 @@ class DataStore {
 // Singleton instance
 const store = new DataStore();
 
-module.exports = store;
+export default store;
 

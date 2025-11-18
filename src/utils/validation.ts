@@ -7,7 +7,7 @@ const BITCOIN_ADDRESS_REGEX = {
   bech32: /^bc1[a-z0-9]{39,59}$/i, // Bech32 (bc1...)
 };
 
-function isValidBitcoinAddress(address) {
+export function isValidBitcoinAddress(address: string | null | undefined): boolean {
   if (!address || typeof address !== 'string') {
     return false;
   }
@@ -18,8 +18,4 @@ function isValidBitcoinAddress(address) {
     BITCOIN_ADDRESS_REGEX.bech32.test(trimmed)
   );
 }
-
-module.exports = {
-  isValidBitcoinAddress,
-};
 

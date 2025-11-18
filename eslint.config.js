@@ -1,24 +1,23 @@
-module.exports = {
-  languageOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'commonjs',
-    globals: {
-      console: 'readonly',
-      process: 'readonly',
-      require: 'readonly',
-      module: 'readonly',
-      __dirname: 'readonly',
-      __filename: 'readonly',
-      Buffer: 'readonly',
-      setTimeout: 'readonly',
-      clearTimeout: 'readonly',
-      setInterval: 'readonly',
-      clearInterval: 'readonly',
+const typescriptEslint = require('@typescript-eslint/eslint-plugin');
+const typescriptParser = require('@typescript-eslint/parser');
+
+module.exports = [
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parser: typescriptParser,
+      parserOptions: {
+        project: './tsconfig.json',
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': typescriptEslint,
+    },
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-  rules: {
-    'no-console': 'off',
-    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-  },
-};
-
+];

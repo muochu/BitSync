@@ -3,16 +3,16 @@
  * Lightweight logging without external dependencies
  */
 const logger = {
-  info: (...args) => {
+  info: (...args: unknown[]): void => {
     console.log(`[INFO] ${new Date().toISOString()}`, ...args);
   },
-  error: (...args) => {
+  error: (...args: unknown[]): void => {
     console.error(`[ERROR] ${new Date().toISOString()}`, ...args);
   },
-  warn: (...args) => {
+  warn: (...args: unknown[]): void => {
     console.warn(`[WARN] ${new Date().toISOString()}`, ...args);
   },
 };
 
-module.exports = logger;
+export default logger;
 
