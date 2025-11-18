@@ -28,7 +28,9 @@ describe('DataStore', () => {
       };
 
       store.addAddress(address);
-      const found = store.getAddressByBitcoinAddress('bc1q0sg9rdst255gtldsmcf8rk0764avqy2h2ksqs5');
+      const found = store.getAddressByBitcoinAddress(
+        'bc1q0sg9rdst255gtldsmcf8rk0764avqy2h2ksqs5'
+      );
 
       expect(found).toEqual(address);
     });
@@ -42,7 +44,9 @@ describe('DataStore', () => {
 
       store.addAddress(address);
 
-      expect(store.addressExists('bc1q0sg9rdst255gtldsmcf8rk0764avqy2h2ksqs5')).toBe(true);
+      expect(
+        store.addressExists('bc1q0sg9rdst255gtldsmcf8rk0764avqy2h2ksqs5')
+      ).toBe(true);
       expect(store.addressExists('invalid')).toBe(false);
     });
 
@@ -246,4 +250,3 @@ describe('DataStore', () => {
     });
   });
 });
-
