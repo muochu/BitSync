@@ -1,10 +1,17 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import store from '../config/store';
-import { isValidBitcoinAddress } from '../utils/validation';
-import { CreateAddressRequest, CreateAddressResponse, AddressResponse } from '../types';
+import { isValidBitcoinAddress, sanitizeLabel } from '../utils/validation';
+import {
+  CreateAddressRequest,
+  CreateAddressResponse,
+  AddressResponse,
+  BalanceResponse,
+  TransactionResponse,
+} from '../types';
 import { asyncHandler } from '../middleware/errorHandler';
 import syncService from '../services/syncService';
+import logger from '../utils/logger';
 
 const router = Router();
 
@@ -12,7 +19,7 @@ const router = Router();
 router.post(
   '/',
   asyncHandler(async (req: Request, res: Response) => {
-    const { address }: CreateAddressRequest = req.body;
+    const { address, label }: CreateAddressRequest = req.body;
 
     if (!address || typeof address !== 'string') {
       res.status(400).json({
@@ -39,6 +46,7 @@ router.post(
     const newAddress = {
       id: addressId,
       address: address.trim(),
+      label: sanitizeLabel(label),
       createdAt: new Date(),
     };
 
@@ -46,12 +54,13 @@ router.post(
 
     // Trigger initial sync in background (don't wait for it)
     syncService.syncAddress(addressId).catch((err) => {
-      console.error(`Background sync failed for ${addressId}:`, err);
+      logger.error(`Background sync failed for ${addressId}:`, err);
     });
 
     const response: CreateAddressResponse = {
       id: newAddress.id,
       address: newAddress.address,
+      label: newAddress.label,
       createdAt: newAddress.createdAt.toISOString(),
     };
 
@@ -70,6 +79,7 @@ router.get(
       return {
         id: addr.id,
         address: addr.address,
+        label: addr.label,
         createdAt: addr.createdAt.toISOString(),
         lastSyncedAt: addr.lastSyncedAt?.toISOString(),
         balance: balance
@@ -83,6 +93,81 @@ router.get(
     });
 
     res.json(response);
+  })
+);
+
+// GET /api/addresses/:id/balance - Get balance for address
+router.get(
+  '/:id/balance',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const address = store.getAddress(id);
+
+    if (!address) {
+      res.status(404).json({
+        error: { message: 'Address not found' },
+      });
+      return;
+    }
+
+    const balance = store.getBalance(id);
+
+    if (!balance) {
+      res.status(404).json({
+        error: { message: 'Balance not found. Sync the address first.' },
+      });
+      return;
+    }
+
+    const response: BalanceResponse = {
+      addressId: id,
+      confirmedBalance: balance.confirmedBalance,
+      unconfirmedBalance: balance.unconfirmedBalance,
+      lastUpdated: balance.lastUpdated.toISOString(),
+    };
+
+    res.json(response);
+  })
+);
+
+// GET /api/addresses/:id/transactions - Get transactions for address
+router.get(
+  '/:id/transactions',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const address = store.getAddress(id);
+
+    if (!address) {
+      res.status(404).json({
+        error: { message: 'Address not found' },
+      });
+      return;
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 1000);
+    const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
+    const allTransactions = store.getTransactionsByAddress(id);
+    const total = allTransactions.length;
+    const transactions = allTransactions.slice(offset, offset + limit);
+
+    const response: TransactionResponse[] = transactions.map((tx) => ({
+      id: tx.id,
+      txHash: tx.txHash,
+      blockHeight: tx.blockHeight,
+      timestamp: tx.timestamp.toISOString(),
+      amount: tx.amount,
+      type: tx.type,
+      confirmations: tx.confirmations,
+      fee: tx.fee,
+    }));
+
+    res.json({
+      transactions: response,
+      total,
+      limit,
+      offset,
+    });
   })
 );
 
@@ -104,6 +189,7 @@ router.get(
     const response: AddressResponse = {
       id: address.id,
       address: address.address,
+      label: address.label,
       createdAt: address.createdAt.toISOString(),
       lastSyncedAt: address.lastSyncedAt?.toISOString(),
       balance: balance
@@ -148,6 +234,40 @@ router.post(
       transactionsAdded: result.transactionsAdded,
       balanceUpdated: result.balanceUpdated,
     });
+  })
+);
+
+// PATCH /api/addresses/:id - Update address label
+router.patch(
+  '/:id',
+  asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { label } = req.body;
+
+    const address = store.getAddress(id);
+    if (!address) {
+      res.status(404).json({
+        error: { message: 'Address not found' },
+      });
+      return;
+    }
+
+    const updatedAddress = {
+      ...address,
+      label: sanitizeLabel(label),
+    };
+
+    store.addAddress(updatedAddress);
+
+    const response: AddressResponse = {
+      id: updatedAddress.id,
+      address: updatedAddress.address,
+      label: updatedAddress.label,
+      createdAt: updatedAddress.createdAt.toISOString(),
+      lastSyncedAt: updatedAddress.lastSyncedAt?.toISOString(),
+    };
+
+    res.json(response);
   })
 );
 

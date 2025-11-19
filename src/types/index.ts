@@ -1,6 +1,7 @@
 export interface Address {
   id: string;
   address: string;
+  label?: string;
   createdAt: Date;
   lastSyncedAt?: Date;
 }
@@ -27,17 +28,20 @@ export interface Balance {
 // API Request/Response types
 export interface CreateAddressRequest {
   address: string;
+  label?: string;
 }
 
 export interface CreateAddressResponse {
   id: string;
   address: string;
+  label?: string;
   createdAt: string;
 }
 
 export interface AddressResponse {
   id: string;
   address: string;
+  label?: string;
   createdAt: string;
   lastSyncedAt?: string;
   balance?: {

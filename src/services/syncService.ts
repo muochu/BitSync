@@ -1,6 +1,6 @@
 import bitcoinApi from './bitcoinApi';
 import store from '../config/store';
-import { Address } from '../types';
+import { Address, Balance } from '../types';
 import logger from '../utils/logger';
 
 export interface SyncResult {
@@ -31,7 +31,21 @@ class SyncService {
       );
 
       const added = store.addTransactions(transactions);
-      store.updateBalance(balance);
+      
+      // Fix balance addressId to use UUID instead of Bitcoin address
+      const balanceWithCorrectId: Balance = {
+        ...balance,
+        addressId: addressId,
+      };
+      store.updateBalance(balanceWithCorrectId);
+      
+      // Debug: Verify balance was stored
+      const storedBalance = store.getBalance(addressId);
+      if (!storedBalance) {
+        logger.error(`Balance not stored correctly for addressId: ${addressId}`);
+      } else {
+        logger.info(`Balance stored: ${storedBalance.confirmedBalance} satoshis for ${addressId}`);
+      }
 
       const updatedAddress: Address = {
         ...address,

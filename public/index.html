@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitSync - Bitcoin Wallet Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #f8f9fa;
+      min-height: 100vh;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      padding: 30px;
+      margin-bottom: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h1 {
+      color: #f7931a;
+      margin-bottom: 8px;
+      font-size: 2.5em;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: #b0b0b0;
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    .section {
+      background: white;
+      padding: 25px;
+      margin-bottom: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e9ecef;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .section:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .section h2 {
+      margin-bottom: 20px;
+      color: #333;
+      font-size: 20px;
+      font-weight: 600;
+      border-bottom: 2px solid #f7931a;
+      padding-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #555;
+      font-size: 14px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: #f7931a;
+      box-shadow: 0 0 0 3px rgba(247, 147, 26, 0.1);
+    }
+
+    button {
+      background: linear-gradient(135deg, #f7931a 0%, #e8841a 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(247, 147, 26, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(247, 147, 26, 0.4);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+      font-size: 13px;
+      padding: 10px 18px;
+      box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+      min-width: 80px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+      font-size: 13px;
+      padding: 10px 18px;
+      box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+      min-width: 80px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.error {
+      background: #fee;
+      color: #c33;
+      border-left: 4px solid #dc3545;
+    }
+
+    .message.success {
+      background: #efe;
+      color: #28a745;
+      border-left: 4px solid #28a745;
+    }
+
+    .address-list {
+      list-style: none;
+    }
+
+    .address-item {
+      padding: 20px;
+      border: 2px solid #e9ecef;
+      border-radius: 10px;
+      margin-bottom: 15px;
+      background: linear-gradient(to right, #ffffff 0%, #f8f9fa 100%);
+      transition: all 0.3s;
+    }
+
+    .address-item:hover {
+      border-color: #f7931a;
+      box-shadow: 0 4px 12px rgba(247, 147, 26, 0.15);
+    }
+
+    .address-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .address-header {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+    }
+
+    .address-header > div:first-child {
+      min-width: 0;
+    }
+
+    .address-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: nowrap;
+      align-items: center;
+      white-space: nowrap;
+      margin-top: 0;
+    }
+
+    .address-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .address-label-input {
+      border: none;
+      background: transparent;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      padding: 4px 8px;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .address-label-input:focus {
+      outline: 2px solid #f7931a;
+      background: #fff;
+    }
+
+    .address-label-input:hover {
+      background: #f8f9fa;
+    }
+
+    .edit-label-btn {
+      background: transparent;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 12px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .edit-label-btn:hover {
+      opacity: 1;
+    }
+
+    .address-value {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #495057;
+      word-break: break-all;
+      background: #f8f9fa;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+
+
+    .balance-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 25px;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .balance-item {
+      color: #666;
+      padding: 10px 15px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+
+    .balance-item strong {
+      color: #333;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .transaction-list {
+      list-style: none;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .transaction-item {
+      padding: 15px;
+      border-bottom: 1px solid #e9ecef;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .transaction-item:hover {
+      background: #f8f9fa;
+    }
+
+    .transaction-item:last-child {
+      border-bottom: none;
+    }
+
+    .transaction-hash {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #495057;
+      font-weight: 500;
+    }
+
+    .transaction-amount {
+      font-weight: 600;
+      font-size: 15px;
+      padding: 6px 12px;
+      border-radius: 6px;
+    }
+
+    .transaction-amount.received {
+      color: #28a745;
+      background: rgba(40, 167, 69, 0.1);
+    }
+
+    .transaction-amount.sent {
+      color: #dc3545;
+      background: rgba(220, 53, 69, 0.1);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #f7931a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e9ecef;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f7931a 0%, #e8841a 100%);
+      border-radius: 3px;
+      animation: progress 2s ease-in-out infinite;
+      width: 0%;
+    }
+
+    @keyframes progress {
+      0% { width: 0%; }
+      50% { width: 70%; }
+      100% { width: 100%; }
+    }
+
+    .sync-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #666;
+      margin-left: 10px;
+    }
+
+    .sync-status .spinner {
+      width: 16px;
+      height: 16px;
+      border-width: 2px;
+      margin: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+
+    .empty-state::before {
+      content: "📭";
+      font-size: 48px;
+      display: block;
+      margin-bottom: 15px;
+    }
+
+    .balance-card {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 2px solid #f7931a;
+    }
+
+    .balance-card h3 {
+      margin-bottom: 15px;
+      font-size: 14px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .balance-card .amount {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .balance-card .sub-amount {
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #6c757d;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #5a6268;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>BitSync</h1>
+      <p class="subtitle">Bitcoin Wallet Transaction Synchronizer</p>
+    </header>
+
+    <div class="section">
+      <h2>Add Bitcoin Address</h2>
+      <div id="addMessage"></div>
+      <div class="form-group">
+        <label for="labelInput">Label (optional)</label>
+        <input type="text" id="labelInput" placeholder="e.g., My Wallet, El Salvador, Whale Account">
+      </div>
+      <div class="form-group">
+        <label for="addressInput">Bitcoin Address</label>
+        <input type="text" id="addressInput" placeholder="bc1q0sg9rdst255gtldsmcf8rk0764avqy2h2ksqs5">
+      </div>
+      <button id="addAddressBtn" onclick="addAddress(event)">Add Address</button>
+    </div>
+
+    <div class="section">
+      <h2>Tracked Addresses</h2>
+      <div id="addressesList">
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>Loading addresses...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" id="balanceSection" style="display: none;">
+      <h2>Balance</h2>
+      <div id="balanceInfo"></div>
+    </div>
+
+    <div class="section" id="transactionsSection" style="display: none;">
+      <h2>Transactions</h2>
+      <div id="transactionsList"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = 'http://localhost:3001/api';
+
+    function showMessage(elementId, message, type) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `<div class="message ${type}">${message}</div>`;
+      setTimeout(() => {
+        element.innerHTML = '';
+      }, 5000);
+    }
+
+    async function addAddress(event) {
+      const addressInput = document.getElementById('addressInput');
+      const labelInput = document.getElementById('labelInput');
+      const button = document.getElementById('addAddressBtn');
+      const address = addressInput.value.trim();
+      const label = labelInput.value.trim();
+
+      if (!address) {
+        showMessage('addMessage', 'Please enter a Bitcoin address', 'error');
+        return;
+      }
+
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner" style="width: 16px; height: 16px; border-width: 2px; margin-right: 8px; display: inline-block;"></span>Adding...';
+
+      try {
+        const response = await fetch(`${API_BASE}/addresses`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, label: label || undefined }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('addMessage', 'Address added successfully!', 'success');
+          addressInput.value = '';
+          labelInput.value = '';
+          await loadAddresses();
+        } else {
+          showMessage('addMessage', data.error?.message || 'Failed to add address', 'error');
+        }
+      } catch (error) {
+        showMessage('addMessage', 'Error: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    }
+
+    async function loadAddresses() {
+      const list = document.getElementById('addressesList');
+      list.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading addresses...</div></div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/addresses`);
+        const addresses = await response.json();
+
+        if (addresses.length === 0) {
+          list.innerHTML = '<div class="empty-state">No addresses tracked yet</div>';
+          return;
+        }
+
+        list.innerHTML = '<ul class="address-list"></ul>';
+        const ul = list.querySelector('ul');
+
+        addresses.forEach((addr, index) => {
+          const li = document.createElement('li');
+          li.className = 'address-item fade-in';
+          li.style.animationDelay = `${index * 0.1}s`;
+          
+          const balanceText = addr.balance 
+            ? (addr.balance.unconfirmed > 0
+                ? `Confirmed: ${(addr.balance.confirmed / 100000000).toFixed(8)} BTC | Unconfirmed: ${(addr.balance.unconfirmed / 100000000).toFixed(8)} BTC`
+                : `Confirmed: ${(addr.balance.confirmed / 100000000).toFixed(8)} BTC`)
+            : 'Not synced yet';
+
+          const labelDisplay = addr.label 
+            ? `<div class="address-label">
+                <span id="label-display-${addr.id}">${addr.label}</span>
+                <button class="edit-label-btn" onclick="editLabel('${addr.id}')" title="Edit label">✏️</button>
+              </div>`
+            : `<div class="address-label">
+                <input type="text" id="label-input-${addr.id}" class="address-label-input" placeholder="Add label..." onblur="saveLabel('${addr.id}')" onkeypress="if(event.key==='Enter') saveLabel('${addr.id}')">
+                <button class="edit-label-btn" onclick="document.getElementById('label-input-${addr.id}').focus()" title="Add label">✏️</button>
+              </div>`;
+
+          li.innerHTML = `
+            <div class="address-header">
+              <div>
+                ${labelDisplay}
+                <div class="address-value">${addr.address}</div>
+                <div class="balance-info" style="margin-top: 10px;">
+                  <span class="balance-item">${balanceText}</span>
+                </div>
+              </div>
+              <div class="address-actions">
+                <button class="btn-secondary" onclick="viewDetails('${addr.id}')">View</button>
+                <button class="btn-secondary" id="sync-${addr.id}" onclick="syncAddress('${addr.id}')">Sync</button>
+                <button class="btn-danger" onclick="deleteAddress('${addr.id}')">Delete</button>
+              </div>
+            </div>
+          `;
+          ul.appendChild(li);
+        });
+      } catch (error) {
+        list.innerHTML = 
+          `<div class="message error">Error loading addresses: ${error.message}</div>`;
+      }
+    }
+
+    async function viewDetails(addressId) {
+      const balanceSection = document.getElementById('balanceSection');
+      const transactionsSection = document.getElementById('transactionsSection');
+      const balanceInfo = document.getElementById('balanceInfo');
+      const transactionsList = document.getElementById('transactionsList');
+
+      balanceSection.style.display = 'block';
+      transactionsSection.style.display = 'block';
+      balanceInfo.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading balance...</div></div>';
+      transactionsList.innerHTML = '<div class="loading"><div class="spinner"></div><div>Loading transactions...</div></div>';
+
+      try {
+        const [addressRes, balanceRes, transactionsRes] = await Promise.all([
+          fetch(`${API_BASE}/addresses/${addressId}`),
+          fetch(`${API_BASE}/addresses/${addressId}/balance`).catch(() => null),
+          fetch(`${API_BASE}/addresses/${addressId}/transactions`).catch(() => null),
+        ]);
+
+        const address = await addressRes.json();
+
+        if (balanceRes && balanceRes.ok) {
+          const balance = await balanceRes.json();
+          const totalBTC = (balance.confirmedBalance / 100000000).toFixed(8);
+          const unconfirmedBTC = (balance.unconfirmedBalance / 100000000).toFixed(8);
+          const hasUnconfirmed = balance.unconfirmedBalance > 0;
+          
+          balanceInfo.innerHTML = `
+            <div class="balance-card fade-in">
+              <h3>Total Balance</h3>
+              <div class="amount">${totalBTC} BTC</div>
+              ${hasUnconfirmed ? `<div class="sub-amount">Unconfirmed: ${unconfirmedBTC} BTC</div>` : ''}
+              <div class="sub-amount" style="margin-top: 10px; font-size: 12px;">
+                Last Updated: ${new Date(balance.lastUpdated).toLocaleString()}
+              </div>
+            </div>
+            <div class="balance-info fade-in">
+              <div class="balance-item">
+                <strong>Confirmed</strong>
+                ${totalBTC} BTC
+              </div>
+              ${hasUnconfirmed ? `
+              <div class="balance-item">
+                <strong>Unconfirmed</strong>
+                ${unconfirmedBTC} BTC
+              </div>
+              ` : ''}
+            </div>
+          `;
+        } else {
+          balanceInfo.innerHTML = '<div class="empty-state">Balance not available. Sync the address first.</div>';
+        }
+
+        if (transactionsRes && transactionsRes.ok) {
+          const data = await transactionsRes.json();
+          
+          if (data.transactions.length === 0) {
+            transactionsList.innerHTML = '<div class="empty-state">No transactions found</div>';
+          } else {
+            const ul = document.createElement('ul');
+            ul.className = 'transaction-list';
+            
+            data.transactions.forEach((tx, index) => {
+              const li = document.createElement('li');
+              li.className = 'transaction-item fade-in';
+              li.style.animationDelay = `${index * 0.05}s`;
+              li.innerHTML = `
+                <div>
+                  <div class="transaction-hash">${tx.txHash.substring(0, 20)}...</div>
+                  <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                    ${new Date(tx.timestamp).toLocaleString()}
+                  </div>
+                </div>
+                <div class="transaction-amount ${tx.type}">
+                  ${tx.type === 'received' ? '+' : '-'}${(tx.amount / 100000000).toFixed(8)} BTC
+                </div>
+              `;
+              ul.appendChild(li);
+            });
+            
+            transactionsList.innerHTML = '';
+            transactionsList.appendChild(ul);
+          }
+        } else {
+          transactionsList.innerHTML = '<div class="empty-state">Transactions not available. Sync the address first.</div>';
+        }
+      } catch (error) {
+        showMessage('addMessage', 'Error loading details: ' + error.message, 'error');
+        balanceInfo.innerHTML = '<div class="message error">Error loading balance</div>';
+        transactionsList.innerHTML = '<div class="message error">Error loading transactions</div>';
+      }
+    }
+
+    async function syncAddress(addressId) {
+      const syncButton = document.getElementById(`sync-${addressId}`);
+      if (!syncButton) return;
+      
+      const originalText = syncButton.textContent;
+      syncButton.disabled = true;
+      syncButton.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin-right: 6px; display: inline-block;"></span>Syncing...';
+
+      const addressItem = syncButton.closest('.address-item');
+      let progressBar = addressItem.querySelector('.progress-bar');
+      if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        progressBar.innerHTML = '<div class="progress-fill"></div>';
+        addressItem.querySelector('.address-header').after(progressBar);
+      }
+      progressBar.style.display = 'block';
+
+      try {
+        const response = await fetch(`${API_BASE}/addresses/${addressId}/sync`, {
+          method: 'POST',
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage('addMessage', 
+            `✅ Sync complete! ${data.transactionsAdded} new transactions added.`, 
+            'success'
+          );
+          progressBar.style.display = 'none';
+          await loadAddresses();
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await viewDetails(addressId);
+        } else {
+          const errorMsg = data.error?.message || 'Sync failed';
+          showMessage('addMessage', errorMsg, 'error');
+          progressBar.style.display = 'none';
+          
+          if (errorMsg.includes('rate limit') || errorMsg.includes('Rate limit')) {
+            showMessage('addMessage', 
+              '⚠️ Rate limit hit. The system will retry automatically with delays. Please wait...', 
+              'error'
+            );
+          }
+        }
+      } catch (error) {
+        showMessage('addMessage', 'Error syncing: ' + error.message, 'error');
+        progressBar.style.display = 'none';
+      } finally {
+        syncButton.disabled = false;
+        syncButton.textContent = originalText;
+      }
+    }
+
+    async function deleteAddress(addressId) {
+      if (!confirm('Are you sure you want to delete this address?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/addresses/${addressId}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          showMessage('addMessage', 'Address deleted successfully', 'success');
+          loadAddresses();
+          document.getElementById('balanceSection').style.display = 'none';
+          document.getElementById('transactionsSection').style.display = 'none';
+        } else {
+          const data = await response.json();
+          showMessage('addMessage', data.error?.message || 'Delete failed', 'error');
+        }
+      } catch (error) {
+        showMessage('addMessage', 'Error deleting: ' + error.message, 'error');
+      }
+    }
+
+    document.getElementById('addressInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        addAddress();
+      }
+    });
+
+    function editLabel(addressId) {
+      const display = document.getElementById(`label-display-${addressId}`);
+      if (!display) return;
+      
+      const currentLabel = display.textContent;
+      display.outerHTML = `<input type="text" id="label-input-${addressId}" class="address-label-input" value="${currentLabel}" onblur="saveLabel('${addressId}')" onkeypress="if(event.key==='Enter') saveLabel('${addressId}')">`;
+      document.getElementById(`label-input-${addressId}`).focus();
+    }
+
+    async function saveLabel(addressId) {
+      const input = document.getElementById(`label-input-${addressId}`);
+      if (!input) return;
+      
+      const label = input.value.trim();
+      
+      try {
+        const response = await fetch(`${API_BASE}/addresses/${addressId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label: label || undefined }),
+        });
+
+        if (response.ok) {
+          await loadAddresses();
+        }
+      } catch (error) {
+        console.error('Error saving label:', error);
+      }
+    }
+
+    loadAddresses();
+  </script>
+</body>
+</html>
+

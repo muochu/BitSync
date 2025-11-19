@@ -16,3 +16,11 @@ export function isValidBitcoinAddress(address: string | null | undefined): boole
   );
 }
 
+export function sanitizeLabel(label: string | null | undefined): string | undefined {
+  if (!label || typeof label !== 'string') {
+    return undefined;
+  }
+  
+  return label.trim().slice(0, 100) || undefined;
+}
+
