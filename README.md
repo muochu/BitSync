@@ -39,6 +39,17 @@ Node.js + Express, TypeScript, Axios for API calls. Uses Blockchair and Blockcha
 - `npm test` - Run tests
 - `npm run lint` - Lint code
 
-## Notes
+## Assumptions
 
-Data is stored in memory, so it resets on server restart. For production, replace the store implementation with a database.
+- In-memory storage is fine for MVP—no database needed, but data resets on restart
+- No authentication required (addresses are public info)
+- BTC mainnet only, no multi-chain support
+- Rate limits happen—built-in retry and fallback to Blockchain.com when Blockchair throttles
+
+## Architecture
+
+- **Singleton in-memory store** with Map-based indexing for fast lookups by address or ID
+- **API client with automatic fallback**—tries Blockchair first, falls back to Blockchain.com on rate limits
+- **Exponential backoff retry** for 430 responses
+- **Service layer separation**—sync logic isolated from routes, easy to test and swap implementations
+- **Static UI**—plain HTML/CSS/JS, no build step needed
