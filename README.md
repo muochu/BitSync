@@ -1,6 +1,25 @@
 # BitSync
 
-Simple Bitcoin wallet tracker. Add BTC addresses, sync balances and transactions, view everything through a web UI or API.
+Bitcoin wallet tracker. Add addresses, sync transactions, check balances. Works through a web UI or REST API.
+
+## What it does
+
+You can add Bitcoin addresses, sync their transaction history, and view balances. The UI shows everything in one place, and there's an API if you want to integrate it elsewhere.
+
+What's included:
+
+- Add/remove Bitcoin addresses with optional labels
+- Sync transactions from Blockchair/Blockchain.com APIs
+- View balances (confirmed and unconfirmed)
+- REST API for all operations
+- Web UI with total balance aggregation
+
+What's not included (intentionally):
+
+- Database persistence (in-memory only, resets on restart)
+- Authentication
+- Multi-chain support (BTC mainnet only)
+- Scheduled background syncs (manual sync only)
 
 ## Quick Start
 
@@ -9,15 +28,17 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3001` in your browser.
+Then open `http://localhost:3001` in your browser.
 
-## Usage
+## How to use
 
-1. Add a Bitcoin address (with optional label)
-2. Click **Sync** to fetch balance and latest transactions
+1. Add a Bitcoin address (you can give it a label if you want)
+2. Click Sync to fetch the balance and latest transactions
 3. View details or delete addresses as needed
 
-## API
+The UI shows a total balance across all addresses at the top, and you can sync individual addresses or all at once.
+
+## API Endpoints
 
 - `GET /api/addresses` - List all addresses
 - `POST /api/addresses` - Add address `{ address, label? }`
@@ -30,7 +51,7 @@ Open `http://localhost:3001` in your browser.
 
 ## Tech Stack
 
-Node.js + Express, TypeScript, Axios for API calls. Uses Blockchair and Blockchain.com APIs (no keys needed, but watch rate limits). In-memory store for simplicity—swap it out for a real DB if you need persistence.
+Node.js + Express, TypeScript, Axios. Uses Blockchair and Blockchain.com APIs (no API keys needed, but they have rate limits). In-memory store using Maps—simple and fast, but data doesn't persist. Easy to swap out for a real database later.
 
 ## Scripts
 
@@ -41,15 +62,42 @@ Node.js + Express, TypeScript, Axios for API calls. Uses Blockchair and Blockcha
 
 ## Assumptions
 
-- In-memory storage is fine for MVP—no database needed, but data resets on restart
-- No authentication required (addresses are public info)
-- BTC mainnet only, no multi-chain support
-- Rate limits happen—built-in retry and fallback to Blockchain.com when Blockchair throttles
+- In-memory storage is fine for this prototype. Data resets when the server restarts.
+- No auth needed since Bitcoin addresses are public anyway.
+- BTC mainnet only—no testnet or other chains.
+- Rate limits are expected. The code retries with exponential backoff and falls back to Blockchain.com if Blockchair throttles us.
 
 ## Architecture
 
-- **Singleton in-memory store** with Map-based indexing for fast lookups by address or ID
-- **API client with automatic fallback**—tries Blockchair first, falls back to Blockchain.com on rate limits
-- **Exponential backoff retry** for 430 responses
-- **Service layer separation**—sync logic isolated from routes, easy to test and swap implementations
-- **Static UI**—plain HTML/CSS/JS, no build step needed
+The code is split into a few main parts:
+
+**Routes** (`src/routes/addresses.ts`) - Express endpoints for CRUD operations and syncing. Handles validation and calls the service layer.
+
+**Services** (`src/services/`) - Business logic lives here:
+
+- `syncService.ts` - Coordinates syncing an address (fetches data, updates store)
+- `bitcoinApi.ts` - Blockchair API client with retry logic
+- `blockchainApi.ts` - Blockchain.com fallback client
+
+**Store** (`src/config/store.ts`) - In-memory data store using Maps. Fast lookups by address or ID, handles deduplication, cascading deletes.
+
+**UI** (`public/index.html`) - Plain HTML/CSS/JS, no build step. Shows addresses, balances, transactions. Aggregates total balance across all addresses.
+
+### Why these choices
+
+- In-memory Maps for O(1) lookups and simple testing. Easy to replace with a DB later.
+- Service layer keeps routes thin and logic testable.
+- API fallback (Blockchair → Blockchain.com) handles rate limits gracefully.
+- Static UI means no build complexity, just works.
+
+## Data Structures
+
+Main types:
+
+**Address** - `id` (UUID), `address` (Bitcoin address string), optional `label`, `createdAt`, optional `lastSyncedAt`
+
+**Balance** - `addressId`, `confirmedBalance` (satoshis), `unconfirmedBalance` (satoshis), `lastUpdated`
+
+**Transaction** - `id` (composite `${addressId}-${txHash}`), `addressId`, `txHash`, `blockHeight`, `timestamp`, `amount` (satoshis), `type` ('sent' | 'received'), `confirmations`, `fee` (satoshis)
+
+The store uses Maps keyed by ID, with a separate index for looking up addresses by Bitcoin address string. Transactions are deduplicated by hash per address. When you delete an address, related transactions and balances are cleaned up automatically.

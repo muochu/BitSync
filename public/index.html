@@ -20,9 +20,11 @@
     button { background: #f7931a; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
     button:hover:not(:disabled) { background: #e8841a; }
     button:disabled { background: #ccc; cursor: not-allowed; }
-    .btn-secondary { background: #6c757d; font-size: 12px; padding: 8px 16px; min-width: 70px; }
+    .btn-secondary { background: #6c757d; font-size: 12px; padding: 8px 16px; min-width: 90px; position: relative; display: inline-flex; align-items: center; justify-content: center; }
     .btn-secondary:hover:not(:disabled) { background: #5a6268; }
-    .btn-danger { background: #dc3545; font-size: 12px; padding: 8px 16px; min-width: 70px; }
+    .btn-secondary .sync-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 6px; flex-shrink: 0; }
+    .btn-secondary:disabled { opacity: 0.7; cursor: not-allowed; }
+    .btn-danger { background: #dc3545; font-size: 12px; padding: 8px 16px; min-width: 70px; display: inline-flex; align-items: center; justify-content: center; }
     .btn-danger:hover:not(:disabled) { background: #c82333; }
     .message { padding: 10px; border-radius: 4px; margin-bottom: 15px; }
     .message.error { background: #fee; color: #c33; border-left: 3px solid #dc3545; }
@@ -103,6 +105,9 @@
 
   <script>
     const API_BASE = 'http://localhost:3001/api';
+    
+    // Track syncing state to prevent issues when DOM is recreated
+    const syncingAddresses = new Set();
 
     function showMessage(elementId, message, type) {
       const element = document.getElementById(elementId);
@@ -190,6 +195,11 @@
                 <button class="edit-label-btn" onclick="document.getElementById('label-input-${addr.id}').focus()" title="Add label">✏️</button>
               </div>`;
 
+          // Check if this address is currently syncing
+          const isSyncing = syncingAddresses.has(addr.id);
+          const syncButtonText = isSyncing ? '<span class="sync-spinner"></span>Syncing...' : 'Sync';
+          const syncButtonDisabled = isSyncing ? 'disabled' : '';
+
           li.innerHTML = `
             <div class="address-header">
               <div>
@@ -201,7 +211,7 @@
               </div>
               <div class="address-actions">
                 <button class="btn-secondary" onclick="viewDetails('${addr.id}')">View</button>
-                <button class="btn-secondary" id="sync-${addr.id}" onclick="syncAddress('${addr.id}')">Sync</button>
+                <button class="btn-secondary" id="sync-${addr.id}" onclick="syncAddress('${addr.id}')" title="Sync balance and transactions" ${syncButtonDisabled}>${syncButtonText}</button>
                 <button class="btn-danger" onclick="deleteAddress('${addr.id}')">Delete</button>
               </div>
             </div>
@@ -306,23 +316,45 @@
       }
     }
 
-    async function syncAddress(addressId) {
-      const syncButton = document.getElementById(`sync-${addressId}`);
-      if (!syncButton) return;
+    // Track syncing state to prevent issues when DOM is recreated
+    function setSyncButtonState(button, isSyncing) {
+      if (!button) return;
       
-      const originalText = syncButton.textContent;
-      syncButton.disabled = true;
-      syncButton.innerHTML = '<span class="spinner" style="width: 14px; height: 14px; border-width: 2px; margin-right: 6px; display: inline-block;"></span>Syncing...';
+      if (isSyncing) {
+        button.disabled = true;
+        button.dataset.originalText = button.textContent.trim();
+        button.innerHTML = '<span class="sync-spinner"></span>Syncing...';
+      } else {
+        button.disabled = false;
+        const originalText = button.dataset.originalText || 'Sync';
+        button.textContent = originalText;
+        delete button.dataset.originalText;
+      }
+    }
 
-      const addressItem = syncButton.closest('.address-item');
-      let progressBar = addressItem.querySelector('.progress-bar');
-      if (!progressBar) {
+    function updateSyncButtonState(addressId, isSyncing) {
+      const button = document.getElementById(`sync-${addressId}`);
+      setSyncButtonState(button, isSyncing);
+    }
+
+    async function syncAddress(addressId) {
+      // Prevent double-syncing
+      if (syncingAddresses.has(addressId)) {
+        return;
+      }
+
+      syncingAddresses.add(addressId);
+      updateSyncButtonState(addressId, true);
+
+      const addressItem = document.getElementById(`sync-${addressId}`)?.closest('.address-item');
+      let progressBar = addressItem?.querySelector('.progress-bar');
+      if (addressItem && !progressBar) {
         progressBar = document.createElement('div');
         progressBar.className = 'progress-bar';
         progressBar.innerHTML = '<div class="progress-fill"></div>';
-        addressItem.querySelector('.address-header').after(progressBar);
+        addressItem.querySelector('.address-header')?.after(progressBar);
       }
-      progressBar.style.display = 'block';
+      if (progressBar) progressBar.style.display = 'block';
 
       try {
         const response = await fetch(`${API_BASE}/addresses/${addressId}/sync`, {
@@ -336,14 +368,20 @@
             `✅ Sync complete! ${data.transactionsAdded} new transactions added.`, 
             'success'
           );
-          progressBar.style.display = 'none';
+          if (progressBar) progressBar.style.display = 'none';
+          
+          // Reload addresses (this will recreate buttons, but we'll restore state)
           await loadAddresses();
+          
+          // Restore sync button state after reload
+          updateSyncButtonState(addressId, false);
+          
           await new Promise(resolve => setTimeout(resolve, 500));
           await viewDetails(addressId);
         } else {
           const errorMsg = data.error?.message || 'Sync failed';
           showMessage('addMessage', errorMsg, 'error');
-          progressBar.style.display = 'none';
+          if (progressBar) progressBar.style.display = 'none';
           
           if (errorMsg.includes('rate limit') || errorMsg.includes('Rate limit')) {
             showMessage('addMessage', 
@@ -351,13 +389,19 @@
               'error'
             );
           }
+          
+          // Reload to refresh state
+          await loadAddresses();
+          updateSyncButtonState(addressId, false);
         }
       } catch (error) {
         showMessage('addMessage', 'Error syncing: ' + error.message, 'error');
-        progressBar.style.display = 'none';
+        if (progressBar) progressBar.style.display = 'none';
+        await loadAddresses();
+        updateSyncButtonState(addressId, false);
       } finally {
-        syncButton.disabled = false;
-        syncButton.textContent = originalText;
+        syncingAddresses.delete(addressId);
+        updateSyncButtonState(addressId, false);
       }
     }
 
