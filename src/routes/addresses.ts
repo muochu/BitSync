@@ -86,6 +86,8 @@ router.get(
           ? {
               confirmed: balance.confirmedBalance,
               unconfirmed: balance.unconfirmedBalance,
+              confirmedUSD: balance.confirmedBalanceUSD,
+              unconfirmedUSD: balance.unconfirmedBalanceUSD,
               lastUpdated: balance.lastUpdated.toISOString(),
             }
           : undefined,
@@ -123,6 +125,8 @@ router.get(
       addressId: id,
       confirmedBalance: balance.confirmedBalance,
       unconfirmedBalance: balance.unconfirmedBalance,
+      confirmedBalanceUSD: balance.confirmedBalanceUSD,
+      unconfirmedBalanceUSD: balance.unconfirmedBalanceUSD,
       lastUpdated: balance.lastUpdated.toISOString(),
     };
 
@@ -196,6 +200,8 @@ router.get(
         ? {
             confirmed: balance.confirmedBalance,
             unconfirmed: balance.unconfirmedBalance,
+            confirmedUSD: balance.confirmedBalanceUSD,
+            unconfirmedUSD: balance.unconfirmedBalanceUSD,
             lastUpdated: balance.lastUpdated.toISOString(),
           }
         : undefined,

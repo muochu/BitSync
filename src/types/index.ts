@@ -22,6 +22,8 @@ export interface Balance {
   addressId: string;
   confirmedBalance: number; // in satoshis
   unconfirmedBalance: number; // in satoshis
+  confirmedBalanceUSD?: number; // USD value of confirmed balance
+  unconfirmedBalanceUSD?: number; // USD value of unconfirmed balance
   lastUpdated: Date;
 }
 
@@ -47,6 +49,8 @@ export interface AddressResponse {
   balance?: {
     confirmed: number;
     unconfirmed: number;
+    confirmedUSD?: number;
+    unconfirmedUSD?: number;
     lastUpdated: string;
   };
 }
@@ -66,6 +70,8 @@ export interface BalanceResponse {
   addressId: string;
   confirmedBalance: number;
   unconfirmedBalance: number;
+  confirmedBalanceUSD?: number;
+  unconfirmedBalanceUSD?: number;
   lastUpdated: string;
 }
 

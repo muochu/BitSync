@@ -46,6 +46,10 @@
     .balance-card h3 { font-size: 12px; margin-bottom: 10px; opacity: 0.9; }
     .balance-card .amount { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
     .balance-card .sub-amount { font-size: 13px; opacity: 0.8; }
+    .usd-toggle-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 10px; }
+    .usd-toggle-btn:hover { background: #218838; }
+    .usd-amount { color: #28a745; font-weight: 600; margin-left: 8px; }
+    .balance-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .transaction-list { list-style: none; max-height: 500px; overflow-y: auto; }
     .transaction-item { padding: 12px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
     .transaction-item:hover { background: #f8f9fa; }
@@ -56,8 +60,14 @@
     .loading { text-align: center; padding: 30px; color: #666; }
     .spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #f7931a; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .progress-bar { width: 100%; height: 4px; background: #eee; border-radius: 2px; margin-top: 10px; }
-    .progress-fill { height: 100%; background: #f7931a; border-radius: 2px; width: 0%; }
+    .progress-bar { width: 100%; height: 6px; background: #e0e0e0; border-radius: 10px; margin-top: 12px; margin-bottom: 8px; overflow: hidden; position: relative; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #f7931a, #ffa64d); border-radius: 10px; width: 0%; transition: width 0.3s ease; position: relative; }
+    .progress-fill::after { content: ''; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    .progress-text { font-size: 11px; color: #666; margin-top: 4px; text-align: center; }
+    .progress-stages { display: flex; justify-content: space-between; font-size: 10px; color: #999; margin-top: 6px; }
+    .progress-stage { flex: 1; text-align: center; padding: 0 4px; }
+    .progress-stage.active { color: #f7931a; font-weight: 600; }
     .empty-state { text-align: center; padding: 40px; color: #999; }
   </style>
 </head>
@@ -249,12 +259,43 @@
           const totalBTC = (balance.confirmedBalance / 100000000).toFixed(8);
           const unconfirmedBTC = (balance.unconfirmedBalance / 100000000).toFixed(8);
           const hasUnconfirmed = balance.unconfirmedBalance > 0;
+          // Calculate USD - use provided value or calculate from BTC if missing
+          let confirmedUSD = balance.confirmedBalanceUSD;
+          const hasStoredUSD = confirmedUSD !== undefined && confirmedUSD !== null && confirmedUSD > 0;
+          
+          const totalBTCNum = parseFloat(totalBTC);
+          
+          // Calculate USD - use provided value or calculate from BTC if missing
+          let confirmedUSDStr = '0.00';
+          if (hasStoredUSD) {
+            confirmedUSDStr = confirmedUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          } else if (totalBTCNum > 0) {
+            confirmedUSDStr = 'Calculating...';
+            // Calculate USD in background
+            setTimeout(() => fetchBTCPriceAndUpdate(addressId, totalBTCNum), 100);
+          }
+          
+          const unconfirmedUSD = balance.unconfirmedBalanceUSD && balance.unconfirmedBalanceUSD > 0
+            ? balance.unconfirmedBalanceUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : null;
+          
+          // Always show button if balance exists
+          const hasBalance = balance.confirmedBalance > 0 || balance.unconfirmedBalance > 0;
           
           balanceInfo.innerHTML = `
             <div class="balance-card fade-in">
-              <h3>Total Balance</h3>
-              <div class="amount">${totalBTC} BTC</div>
-              ${hasUnconfirmed ? `<div class="sub-amount">Unconfirmed: ${unconfirmedBTC} BTC</div>` : ''}
+              <div class="balance-header">
+                <h3>Total Balance</h3>
+                ${hasBalance ? `<button class="usd-toggle-btn" onclick="toggleUSD('${addressId}')" id="usdToggle-${addressId}">Hide USD</button>` : ''}
+              </div>
+              <div class="amount" id="balanceAmount-${addressId}">
+                ${totalBTC} BTC
+                <span class="usd-amount" id="usdAmount-${addressId}" data-has-usd="${hasStoredUSD}" data-btc="${totalBTCNum}">($${confirmedUSDStr})</span>
+              </div>
+              ${hasUnconfirmed ? `<div class="sub-amount" id="unconfirmedAmount-${addressId}">
+                Unconfirmed: ${unconfirmedBTC} BTC
+                ${unconfirmedUSD ? `<span class="usd-amount" id="usdUnconfirmed-${addressId}">($${unconfirmedUSD})</span>` : ''}
+              </div>` : ''}
               <div class="sub-amount" style="margin-top: 10px; font-size: 12px;">
                 Last Updated: ${new Date(balance.lastUpdated).toLocaleString()}
               </div>
@@ -262,12 +303,14 @@
             <div class="balance-info fade-in">
               <div class="balance-item">
                 <strong>Confirmed</strong>
-                ${totalBTC} BTC
+                <span id="confirmedAmount-${addressId}">${totalBTC} BTC</span>
+                <span class="usd-amount" id="usdConfirmed-${addressId}" data-has-usd="${hasStoredUSD}" data-btc="${totalBTCNum}">($${confirmedUSDStr})</span>
               </div>
               ${hasUnconfirmed ? `
               <div class="balance-item">
                 <strong>Unconfirmed</strong>
-                ${unconfirmedBTC} BTC
+                <span id="unconfirmedItem-${addressId}">${unconfirmedBTC} BTC</span>
+                ${unconfirmedUSD ? `<span class="usd-amount" id="usdUnconfirmedItem-${addressId}">($${unconfirmedUSD})</span>` : ''}
               </div>
               ` : ''}
             </div>
@@ -337,6 +380,84 @@
       setSyncButtonState(button, isSyncing);
     }
 
+    function updateProgress(addressId, percentage, text) {
+      const progressFill = document.getElementById(`progressFill-${addressId}`);
+      const progressText = document.getElementById(`progressText-${addressId}`);
+      
+      if (progressFill) {
+        progressFill.style.width = `${percentage}%`;
+      }
+      if (progressText) {
+        progressText.textContent = text;
+      }
+    }
+
+    function updateStage(addressId, stageNum, isActive) {
+      const stage = document.getElementById(`stage${stageNum}-${addressId}`);
+      if (stage) {
+        if (isActive) {
+          stage.classList.add('active');
+        } else {
+          stage.classList.remove('active');
+        }
+      }
+    }
+
+    async function fetchBTCPriceAndUpdate(addressId, btcAmount) {
+      try {
+        // Try CoinCap first
+        let btcPrice = 0;
+        try {
+          const priceRes = await fetch('https://api.coincap.io/v2/assets/bitcoin');
+          if (priceRes.ok) {
+            const priceData = await priceRes.json();
+            if (priceData.data && priceData.data.priceUsd) {
+              btcPrice = parseFloat(priceData.data.priceUsd);
+            }
+          }
+        } catch (error) {
+          console.log('CoinCap failed, trying CoinGecko...');
+        }
+        
+        // Fallback to CoinGecko
+        if (!btcPrice || btcPrice === 0) {
+          try {
+            const geckoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+            if (geckoRes.ok) {
+              const geckoData = await geckoRes.json();
+              if (geckoData.bitcoin && geckoData.bitcoin.usd) {
+                btcPrice = parseFloat(geckoData.bitcoin.usd);
+              }
+            }
+          } catch (error) {
+            console.log('CoinGecko failed');
+          }
+        }
+        
+        // Final fallback
+        if (!btcPrice || btcPrice === 0) {
+          btcPrice = 92000; // Approximate current BTC price
+        }
+        
+        if (btcPrice > 0) {
+          const usdValue = (btcAmount * btcPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          // Update all USD displays
+          const usdAmount = document.getElementById(`usdAmount-${addressId}`);
+          const usdConfirmed = document.getElementById(`usdConfirmed-${addressId}`);
+          
+          if (usdAmount) usdAmount.textContent = `($${usdValue})`;
+          if (usdConfirmed) usdConfirmed.textContent = `($${usdValue})`;
+        }
+      } catch (error) {
+        console.error('Error fetching BTC price:', error);
+        const usdAmount = document.getElementById(`usdAmount-${addressId}`);
+        const usdConfirmed = document.getElementById(`usdConfirmed-${addressId}`);
+        if (usdAmount) usdAmount.textContent = '($0.00)';
+        if (usdConfirmed) usdConfirmed.textContent = '($0.00)';
+      }
+    }
+
     async function syncAddress(addressId) {
       // Prevent double-syncing
       if (syncingAddresses.has(addressId)) {
@@ -347,28 +468,59 @@
       updateSyncButtonState(addressId, true);
 
       const addressItem = document.getElementById(`sync-${addressId}`)?.closest('.address-item');
-      let progressBar = addressItem?.querySelector('.progress-bar');
-      if (addressItem && !progressBar) {
-        progressBar = document.createElement('div');
-        progressBar.className = 'progress-bar';
-        progressBar.innerHTML = '<div class="progress-fill"></div>';
-        addressItem.querySelector('.address-header')?.after(progressBar);
+      let progressContainer = addressItem?.querySelector('.progress-container');
+      if (addressItem && !progressContainer) {
+        progressContainer = document.createElement('div');
+        progressContainer.className = 'progress-container';
+        progressContainer.innerHTML = `
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill-${addressId}"></div>
+          </div>
+          <div class="progress-text" id="progressText-${addressId}">Starting sync...</div>
+          <div class="progress-stages" id="progressStages-${addressId}">
+            <span class="progress-stage" id="stage1-${addressId}">Fetching balance</span>
+            <span class="progress-stage" id="stage2-${addressId}">Loading transactions</span>
+            <span class="progress-stage" id="stage3-${addressId}">Updating data</span>
+          </div>
+        `;
+        addressItem.querySelector('.address-header')?.after(progressContainer);
       }
-      if (progressBar) progressBar.style.display = 'block';
+      if (progressContainer) {
+        progressContainer.style.display = 'block';
+        updateProgress(addressId, 0, 'Starting sync...');
+      }
 
       try {
+        // Simulate progress stages
+        setTimeout(() => updateProgress(addressId, 20, 'Fetching balance from blockchain...'), 100);
+        setTimeout(() => {
+          updateProgress(addressId, 50, 'Loading transactions...');
+          updateStage(addressId, 1, true);
+        }, 500);
+        
         const response = await fetch(`${API_BASE}/addresses/${addressId}/sync`, {
           method: 'POST',
         });
 
+        updateProgress(addressId, 80, 'Processing data...');
+        updateStage(addressId, 2, true);
+
         const data = await response.json();
 
         if (response.ok) {
+          updateProgress(addressId, 100, 'Sync complete!');
+          updateStage(addressId, 3, true);
+          
           showMessage('addMessage', 
-            `✅ Sync complete! ${data.transactionsAdded} new transactions added.`, 
+            `Sync complete! ${data.transactionsAdded} new transactions added.`, 
             'success'
           );
-          if (progressBar) progressBar.style.display = 'none';
+          
+          // Hide progress after a short delay
+          setTimeout(() => {
+            const progressContainer = addressItem?.querySelector('.progress-container');
+            if (progressContainer) progressContainer.style.display = 'none';
+          }, 1500);
           
           // Reload addresses (this will recreate buttons, but we'll restore state)
           await loadAddresses();
@@ -380,8 +532,13 @@
           await viewDetails(addressId);
         } else {
           const errorMsg = data.error?.message || 'Sync failed';
+          updateProgress(addressId, 0, 'Sync failed');
           showMessage('addMessage', errorMsg, 'error');
-          if (progressBar) progressBar.style.display = 'none';
+          
+          setTimeout(() => {
+            const progressContainer = addressItem?.querySelector('.progress-container');
+            if (progressContainer) progressContainer.style.display = 'none';
+          }, 2000);
           
           if (errorMsg.includes('rate limit') || errorMsg.includes('Rate limit')) {
             showMessage('addMessage', 
@@ -395,8 +552,13 @@
           updateSyncButtonState(addressId, false);
         }
       } catch (error) {
+        updateProgress(addressId, 0, 'Error occurred');
         showMessage('addMessage', 'Error syncing: ' + error.message, 'error');
-        if (progressBar) progressBar.style.display = 'none';
+        
+        setTimeout(() => {
+          const progressContainer = addressItem?.querySelector('.progress-container');
+          if (progressContainer) progressContainer.style.display = 'none';
+        }, 2000);
         await loadAddresses();
         updateSyncButtonState(addressId, false);
       } finally {
@@ -462,6 +624,105 @@
         }
       } catch (error) {
         console.error('Error saving label:', error);
+      }
+    }
+
+    async function toggleUSD(addressId) {
+      const toggleBtn = document.getElementById(`usdToggle-${addressId}`);
+      const usdAmount = document.getElementById(`usdAmount-${addressId}`);
+      const usdConfirmed = document.getElementById(`usdConfirmed-${addressId}`);
+      const usdUnconfirmed = document.getElementById(`usdUnconfirmed-${addressId}`);
+      const usdUnconfirmedItem = document.getElementById(`usdUnconfirmedItem-${addressId}`);
+      
+      if (!toggleBtn || !usdAmount) return;
+      
+      const isVisible = usdAmount.style.display !== 'none';
+      
+      if (isVisible) {
+        // Hide USD
+        usdAmount.style.display = 'none';
+        if (usdConfirmed) usdConfirmed.style.display = 'none';
+        if (usdUnconfirmed) usdUnconfirmed.style.display = 'none';
+        if (usdUnconfirmedItem) usdUnconfirmedItem.style.display = 'none';
+        toggleBtn.textContent = 'Show USD';
+      } else {
+        // Show USD - if USD is missing or 0, fetch current price and calculate
+        const hasUSD = usdAmount.dataset.hasUsd === 'true';
+        const btcAmount = parseFloat(usdAmount.dataset.btc || '0');
+        
+        // Show USD elements first
+        usdAmount.style.display = 'inline';
+        if (usdConfirmed) usdConfirmed.style.display = 'inline';
+        if (usdUnconfirmed) usdUnconfirmed.style.display = 'inline';
+        if (usdUnconfirmedItem) usdUnconfirmedItem.style.display = 'inline';
+        toggleBtn.textContent = 'Hide USD';
+        
+        // If USD is missing or showing "Calculating...", fetch current price
+        if ((!hasUSD || usdAmount.textContent.includes('Calculating')) && btcAmount > 0) {
+          // Show "Calculating..." while fetching
+          usdAmount.textContent = '(Calculating...)';
+          if (usdConfirmed) usdConfirmed.textContent = '(Calculating...)';
+          
+          // Fetch current BTC price and calculate USD - try multiple sources
+          let btcPrice = 0;
+          let priceSource = '';
+          
+          try {
+            // Try CoinCap first
+            const priceRes = await fetch('https://api.coincap.io/v2/assets/bitcoin', { 
+              timeout: 5000,
+              headers: { 'Accept': 'application/json' }
+            });
+            
+            if (priceRes.ok) {
+              const priceData = await priceRes.json();
+              if (priceData.data && priceData.data.priceUsd) {
+                btcPrice = parseFloat(priceData.data.priceUsd);
+                priceSource = 'CoinCap';
+              }
+            }
+          } catch (error) {
+            console.log('CoinCap API failed, trying fallback...', error);
+          }
+          
+          // Fallback to CoinGecko if CoinCap fails
+          if (!btcPrice || btcPrice === 0) {
+            try {
+              const geckoRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd', {
+                timeout: 5000,
+                headers: { 'Accept': 'application/json' }
+              });
+              
+              if (geckoRes.ok) {
+                const geckoData = await geckoRes.json();
+                if (geckoData.bitcoin && geckoData.bitcoin.usd) {
+                  btcPrice = parseFloat(geckoData.bitcoin.usd);
+                  priceSource = 'CoinGecko';
+                }
+              }
+            } catch (error) {
+              console.log('CoinGecko API failed, trying another fallback...', error);
+            }
+          }
+          
+          // Final fallback - use a reasonable estimate if APIs fail
+          if (!btcPrice || btcPrice === 0) {
+            // Use approximate current BTC price as fallback (update this periodically)
+            btcPrice = 92000; // Approximate current BTC price
+            priceSource = 'estimate';
+          }
+          
+          if (btcPrice > 0) {
+            const usdValue = (btcAmount * btcPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            // Update all USD displays
+            usdAmount.textContent = `($${usdValue})`;
+            if (usdConfirmed) usdConfirmed.textContent = `($${usdValue})`;
+          } else {
+            usdAmount.textContent = '(Unable to fetch price)';
+            if (usdConfirmed) usdConfirmed.textContent = '(Unable to fetch price)';
+          }
+        }
       }
     }
 

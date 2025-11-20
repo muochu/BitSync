@@ -41,7 +41,8 @@ class BitcoinApiClient {
   private minDelayBetweenRequests: number = 5000; // 5 seconds minimum to respect rate limits
 
   constructor() {
-    this.baseUrl = process.env.BLOCKCHAIR_API_URL || 'https://api.blockchair.com/bitcoin';
+    this.baseUrl =
+      process.env.BLOCKCHAIR_API_URL || 'https://api.blockchair.com/bitcoin';
     this.client = axios.create({
       baseURL: this.baseUrl,
       timeout: 30000,
@@ -54,12 +55,12 @@ class BitcoinApiClient {
   private async waitIfNeeded(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.minDelayBetweenRequests) {
       const waitTime = this.minDelayBetweenRequests - timeSinceLastRequest;
       await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -75,7 +76,9 @@ class BitcoinApiClient {
         if (axios.isAxiosError(error) && error.response?.status === 430) {
           if (attempt < maxRetries - 1) {
             const delay = baseDelay * Math.pow(2, attempt);
-            logger.warn(`Rate limited. Retrying in ${delay / 1000} seconds... (attempt ${attempt + 1}/${maxRetries})`);
+            logger.warn(
+              `Rate limited. Retrying in ${delay / 1000} seconds... (attempt ${attempt + 1}/${maxRetries})`
+            );
             await new Promise((resolve) => setTimeout(resolve, delay));
             continue;
           }
@@ -89,7 +92,7 @@ class BitcoinApiClient {
   async getAddressBalance(address: string): Promise<Balance> {
     return this.retryWithBackoff(async () => {
       await this.waitIfNeeded();
-      
+
       const response = await this.client.get<BlockchairResponse>(
         `/dashboards/address/${address}?limit=0`
       );
@@ -101,26 +104,39 @@ class BitcoinApiClient {
 
       const confirmedBalance = addressData.address.balance || 0;
       const unconfirmedBalance = 0;
+      // Blockchair provides balance_usd directly
+      const confirmedBalanceUSD =
+        addressData.address.balance_usd !== undefined
+          ? addressData.address.balance_usd
+          : undefined;
 
       return {
         addressId: address, // This will be replaced by syncService
         confirmedBalance,
         unconfirmedBalance,
+        confirmedBalanceUSD,
+        unconfirmedBalanceUSD: 0,
         lastUpdated: new Date(),
       };
     });
   }
 
-  async getAddressTransactions(address: string): Promise<BlockchairTransaction[]> {
+  async getAddressTransactions(
+    address: string
+  ): Promise<BlockchairTransaction[]> {
     return this.retryWithBackoff(async () => {
       await this.waitIfNeeded();
-      
+
       const response = await this.client.get<BlockchairResponse>(
         `/dashboards/address/${address}?limit=100&offset=0`
       );
 
       const addressData = response.data.data[address];
-      if (!addressData || !addressData.transactions || addressData.transactions.length === 0) {
+      if (
+        !addressData ||
+        !addressData.transactions ||
+        addressData.transactions.length === 0
+      ) {
         return [];
       }
 
@@ -140,7 +156,10 @@ class BitcoinApiClient {
     });
   }
 
-  async syncAddress(address: string, addressId: string): Promise<{
+  async syncAddress(
+    address: string,
+    addressId: string
+  ): Promise<{
     balance: Balance;
     transactions: Transaction[];
   }> {
@@ -169,15 +188,20 @@ class BitcoinApiClient {
         return { balance, transactions };
       } catch (blockchairError) {
         // If Blockchair fails with rate limit, try Blockchain.com as fallback
-        if (axios.isAxiosError(blockchairError) && blockchairError.response?.status === 430) {
-          logger.warn('Blockchair rate limited, trying Blockchain.com as fallback...');
+        if (
+          axios.isAxiosError(blockchairError) &&
+          blockchairError.response?.status === 430
+        ) {
+          logger.warn(
+            'Blockchair rate limited, trying Blockchain.com as fallback...'
+          );
           const result = await blockchainApi.getAddressData(address);
           return {
             balance: {
               ...result.balance,
               addressId: addressId, // Use UUID, not Bitcoin address
             },
-            transactions: result.transactions.map(tx => ({
+            transactions: result.transactions.map((tx) => ({
               ...tx,
               id: `${addressId}-${tx.txHash}`,
               addressId: addressId, // Fix: Use UUID instead of Bitcoin address
@@ -196,4 +220,3 @@ class BitcoinApiClient {
 const bitcoinApi = new BitcoinApiClient();
 
 export default bitcoinApi;
-

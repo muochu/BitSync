@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Transaction, Balance } from '../types';
+import { Transaction, Balance, SATOSHIS_PER_BTC } from '../types';
 import logger from '../utils/logger';
 
 interface BlockchainResponse {
@@ -23,6 +23,30 @@ interface BlockchainTransaction {
 
 class BlockchainApiClient {
   private baseUrl = 'https://blockchain.info';
+  private cachedBTCPrice: { price: number; timestamp: number } | null = null;
+  private BTC_PRICE_CACHE_TTL = 60000; // 1 minute cache
+
+  private async getBTCPrice(): Promise<number> {
+    // Check cache first
+    if (this.cachedBTCPrice && Date.now() - this.cachedBTCPrice.timestamp < this.BTC_PRICE_CACHE_TTL) {
+      return this.cachedBTCPrice.price;
+    }
+
+    try {
+      const response = await axios.get('https://api.coincap.io/v2/assets/bitcoin', { timeout: 5000 });
+      const price = parseFloat(response.data?.data?.priceUsd || '0');
+      
+      if (price > 0) {
+        this.cachedBTCPrice = { price, timestamp: Date.now() };
+        return price;
+      }
+    } catch (error) {
+      logger.warn('Failed to fetch BTC price, using cached or default');
+    }
+
+    // Return cached price if available, otherwise default to 0
+    return this.cachedBTCPrice?.price || 0;
+  }
 
   async getAddressData(address: string): Promise<{
     balance: Balance;
@@ -36,11 +60,19 @@ class BlockchainApiClient {
 
       const data = response.data;
       const confirmedBalance = data.final_balance || 0;
+      
+      // Get BTC price for USD conversion
+      const btcPrice = await this.getBTCPrice();
+      const confirmedBalanceUSD = btcPrice > 0 && confirmedBalance > 0
+        ? (confirmedBalance / SATOSHIS_PER_BTC) * btcPrice 
+        : undefined;
 
       const balance: Balance = {
         addressId: address, // Will be replaced by syncService with UUID
         confirmedBalance,
         unconfirmedBalance: 0,
+        confirmedBalanceUSD,
+        unconfirmedBalanceUSD: 0,
         lastUpdated: new Date(),
       };
 
