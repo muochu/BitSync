@@ -277,6 +277,15 @@ router.patch(
   })
 );
 
+// POST /api/addresses/sync-all - Sync all addresses
+router.post(
+  '/sync-all',
+  asyncHandler(async (_req: Request, res: Response) => {
+    const results = await syncService.syncAllAddresses();
+    res.json(results);
+  })
+);
+
 // DELETE /api/addresses/:id - Remove address
 router.delete(
   '/:id',

@@ -111,7 +111,7 @@ class BitcoinApiClient {
           : undefined;
 
       return {
-        addressId: address, // This will be replaced by syncService
+        addressId: address, 
         confirmedBalance,
         unconfirmedBalance,
         confirmedBalanceUSD,
